@@ -37,9 +37,14 @@ Handy links while presenting:
    - `dragonfly3d.ts` draws the 3D model at the pose the engine decides.
    - `DragonflyIntro.tsx` is the reusable component: `<DragonflyIntro emblemSrc onEnter />`.
    - `IntroTransition.tsx` is the bloom of light that opens into the site.
+   - **Enter the Experience:** the emblem melts back into pigment, and the pigment
+     re-forms in the exact shape and colours of the Prismatic Lotus Dragonfly. The
+     real 3D model resolves out of it, the forest dissolves into the homepage, and
+     the dragonfly flies to its place in the hero (`REBIRTH` in `engine.ts`).
 2. **Homepage** (`SanctuaryHomepage`): layered mountain parallax and mist. The
    reborn Prismatic Lotus Dragonfly (`src/three/HeroDragonfly.tsx`, live 3D)
-   flies out of the light, trailing gold, and hovers beside the line "Some
+   takes over from the intro at the same spot (or, if you skipped the intro,
+   flies in) and hovers beside the line "Some
    places invite you to visit. Others invite you to return to yourself." It
    drifts away as you scroll.
 3. **Sanctuary**, then **a pause for one guided breath** (`BreathPause`).

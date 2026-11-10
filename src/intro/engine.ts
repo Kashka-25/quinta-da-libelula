@@ -8,6 +8,7 @@
 
 import { drawDragonfly, type Pose } from './dragonfly';
 import type { DragonflyRenderer } from './dragonfly3d';
+import { heroRest } from '../three/heroRest';
 import { buildStatic, drawAtmosphere, glowSprite, makeMotes, PAD, seeded, type Mist, type Mote } from './scene';
 
 export type Phase = 'arrival' | 'melt' | 'gather' | 'reveal';
@@ -45,6 +46,16 @@ interface P {
   nectar: boolean;
   wing: boolean;
 }
+
+export interface RebirthCallbacks {
+  /** the reborn has formed and starts to fly: show the homepage beneath */
+  onDepart: () => void;
+  /** it has reached its place in the hero: hand over to the homepage */
+  onDone: () => void;
+}
+
+/** Rebirth timeline, in ms after "Enter the Experience". */
+export const REBIRTH = { reform: 1400, formed: 3100, emerge: 3500, depart: 4500, done: 6800 } as const;
 
 interface Bloom {
   x: number;
@@ -110,6 +121,7 @@ export class IntroEngine {
   private destroyed = false;
   private holding = false;
   private cleared3d = false;
+  private reb: { start: number; cb: RebirthCallbacks; targets: boolean; departed: boolean; done: boolean; t0: number } | null = null;
 
   constructor(private bgCanvas: HTMLCanvasElement, private fxCanvas: HTMLCanvasElement, private opts: EngineOptions) {
     this.bg = bgCanvas.getContext('2d')!;
@@ -133,7 +145,7 @@ export class IntroEngine {
         }
       };
       opts.ready.then(release, release);
-      window.setTimeout(release, 3500);
+      window.setTimeout(release, 10000);
     }
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -155,6 +167,217 @@ export class IntroEngine {
     this.meltReady = this.gatherReady = true;
     this.holding = false;
     this.clear3d();
+  }
+
+  /** True when the live 3D reborn dragonfly can take over (WebGL and the model are there). */
+  canRebirth() {
+    return !!this.r3d();
+  }
+
+  /**
+   * "Enter the Experience": the emblem melts back into pigment, the pigment
+   * re-forms as the reborn Prismatic Lotus Dragonfly, which then flies to its
+   * place in the homepage hero.
+   */
+  rebirth(cb: RebirthCallbacks) {
+    if (this.reb) return;
+    this.skip();
+    this.reb = { start: performance.now(), cb, targets: false, departed: false, done: false, t0: performance.now() - this.start };
+    this.r3d()?.reborn();
+    // the emblem's own pixels become the pigment
+    const pts = this.emblemTargets();
+    const max = this.opts.lite ? 1300 : 2600;
+    const rnd = Math.random;
+    this.particles = pts.slice(0, max).map((p) => {
+      const nectar = rnd() < 0.1;
+      const c0: [number, number, number] = nectar ? [...GOLD] : [...IVORY];
+      return {
+        x: p.x,
+        y: p.y,
+        vx: 0,
+        vy: 0,
+        sx: p.x,
+        sy: p.y,
+        tx: p.x,
+        ty: p.y,
+        hasTarget: false,
+        c0,
+        c: [...c0] as [number, number, number],
+        pg: nectar ? GOLD : PIGMENTS[Math.floor(rnd() * PIGMENTS.length)],
+        size: 1.1 + rnd() * 0.9,
+        delay: rnd() * 500,
+        gd: rnd() * 500,
+        swirl: (rnd() - 0.5) * Math.min(this.w, this.h) * 0.18,
+        nectar,
+        wing: false,
+      };
+    });
+  }
+
+  /** The pose of the reborn as it forms at the centre. */
+  private rebornCentre(t: number): Pose {
+    // the lotus wings reach further than the original's: keep them on narrow screens
+    const s = Math.min(this.bodyLength(), this.w * 0.42);
+    return { x: this.w / 2, y: this.h * 0.45 + s * 0.12, s, rot: 0, t };
+  }
+
+  private frameRebirth(now: number, t: number, dt: number, dtMs: number) {
+    const reb = this.reb!;
+    const R = now - reb.start;
+    const fx = this.fx;
+    const r3d = this.r3d();
+    const tt = 4000 + R; // keeps the wings in their settled hover rhythm
+    this.drawBackground(t, dt, 1);
+
+    if (R < REBIRTH.depart) {
+      fx.save();
+      fx.globalCompositeOperation = 'destination-out';
+      fx.fillStyle = `rgba(0,0,0,${R < REBIRTH.reform ? 0.07 : R < REBIRTH.formed ? 0.16 : 0.5})`;
+      fx.fillRect(0, 0, this.w, this.h);
+      fx.restore();
+    } else fx.clearRect(0, 0, this.w, this.h);
+
+    // the emblem lets go
+    if (R < 700 && this.emblem) {
+      const e = this.emblemRect;
+      fx.globalAlpha = 0.35 * (1 - R / 700);
+      fx.drawImage(this.emblem, e.x, e.y, e.w, e.h);
+      fx.globalAlpha = 1;
+    }
+
+    // as the pigment flows, read the reborn's shape and colours to re-form into
+    if (!reb.targets && R > REBIRTH.reform - 250 && r3d) {
+      reb.targets = true;
+      const off = document.createElement('canvas');
+      off.width = this.w;
+      off.height = this.h;
+      const octx = off.getContext('2d', { willReadFrequently: true })!;
+      r3d.draw(this.rebornCentre(tt), 1, 0, { which: 'reborn' });
+      octx.drawImage(r3d.canvas, 0, 0, this.w, this.h);
+      r3d.clear();
+      const data = octx.getImageData(0, 0, this.w, this.h).data;
+      const pts: { x: number; y: number; c: [number, number, number] }[] = [];
+      for (let y = 0; y < this.h; y += 2) {
+        for (let x = 0; x < this.w; x += 2) {
+          const i = (y * this.w + x) * 4;
+          if (data[i + 3] > 90) pts.push({ x, y, c: [data[i], data[i + 1], data[i + 2]] });
+        }
+      }
+      for (let i = pts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pts[i], pts[j]] = [pts[j], pts[i]];
+      }
+      if (import.meta.env.DEV) console.debug('[rebirth] reborn shape points', pts.length);
+      this.particles.forEach((p, i) => {
+        const tg = pts[i % Math.max(1, pts.length)];
+        p.hasTarget = !!tg;
+        if (tg) {
+          p.tx = tg.x;
+          p.ty = tg.y;
+          p.pg = tg.c;
+        }
+      });
+    }
+
+    if (R < REBIRTH.reform) {
+      // flowing pigment
+      for (const p of this.particles) {
+        const k = (R - p.delay) / 1000;
+        if (k > 0) {
+          const a = this.flow(p.x, p.y, t);
+          p.vx += (Math.cos(a) * 0.09 + (p.x - this.w / 2) * 0.0002) * dt;
+          p.vy += (Math.sin(a) * 0.09 + 0.012) * dt;
+          p.vx *= 0.975;
+          p.vy *= 0.975;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+        }
+        p.sx = p.x;
+        p.sy = p.y;
+        this.dot(p, 0.6, p.size + clamp(k) * 1.6);
+      }
+    } else if (R < REBIRTH.depart) {
+      // gathering into the reborn
+      const fade = 1 - clamp((R - REBIRTH.emerge - 300) / 700);
+      for (const p of this.particles) {
+        const e = ease(clamp((R - REBIRTH.reform - p.gd * 0.6) / (REBIRTH.formed - REBIRTH.reform - 300)));
+        const dx = p.tx - p.sx;
+        const dy = p.ty - p.sy;
+        const len = Math.hypot(dx, dy) || 1;
+        const bow = Math.sin(e * Math.PI) * p.swirl;
+        p.x = mix(p.sx, p.tx, e) + (-dy / len) * bow;
+        p.y = mix(p.sy, p.ty, e) + (dx / len) * bow;
+        p.c = [mix(p.c[0], p.pg[0], 0.08), mix(p.c[1], p.pg[1], 0.08), mix(p.c[2], p.pg[2], 0.08)];
+        // once formed, the pigment shimmers in place as the real dragonfly resolves out of it
+        const tw = e >= 1 ? 0.75 + 0.25 * Math.sin(now * 0.012 + p.gd) : 1;
+        if (fade > 0) this.dot(p, 0.9 * fade * tw, mix(2.2, 1.25, e));
+      }
+    }
+
+    if (r3d && R >= REBIRTH.emerge) {
+      const centre = this.rebornCentre(tt);
+      if (R < REBIRTH.depart) {
+        const a = ease(clamp((R - REBIRTH.emerge) / (REBIRTH.depart - REBIRTH.emerge)));
+        r3d.draw(centre, a, dtMs / 1000, { which: 'reborn', glow: 1.3 * (1 - a) + 0.25 });
+      } else {
+        if (!reb.departed) {
+          reb.departed = true;
+          reb.cb.onDepart();
+        }
+        const u = ease(clamp((R - REBIRTH.depart) / (REBIRTH.done - REBIRTH.depart)));
+        const rest = heroRest(this.w, this.h);
+        const pose: Pose = {
+          x: mix(centre.x, rest.x, u),
+          y: mix(centre.y, rest.y, u) - Math.sin(u * Math.PI) * this.h * 0.07,
+          s: mix(centre.s, rest.s, u),
+          rot: Math.sin(u * Math.PI) * -0.25,
+          t: tt,
+        };
+        r3d.draw(pose, 1, dtMs / 1000, { which: 'reborn', glow: 0.25 * (1 - u) });
+        // a few sparks shed as it flies
+        if (u < 1) {
+          fx.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < 3; i++) {
+            const s = 6 + Math.random() * 10;
+            fx.globalAlpha = 0.6 * (1 - u);
+            fx.drawImage(this.nectarSprite, pose.x + (Math.random() - 0.5) * pose.s * 1.4 - s / 2, pose.y + (Math.random() - 0.3) * pose.s * 0.6 - s / 2, s, s);
+          }
+          fx.globalAlpha = 1;
+          fx.globalCompositeOperation = 'source-over';
+        }
+        if (R >= REBIRTH.done && !reb.done) {
+          reb.done = true;
+          reb.cb.onDone();
+        }
+      }
+    }
+    // without the reborn model, still finish the journey
+    if (!r3d && R >= REBIRTH.depart && !reb.departed) {
+      reb.departed = true;
+      reb.cb.onDepart();
+    }
+    if (!r3d && R >= REBIRTH.done && !reb.done) {
+      reb.done = true;
+      reb.cb.onDone();
+    }
+  }
+
+  private dot(p: P, alpha: number, size: number) {
+    const fx = this.fx;
+    if (p.nectar) {
+      fx.globalCompositeOperation = 'lighter';
+      fx.globalAlpha = alpha * 0.5;
+      const s = size * 5;
+      fx.drawImage(this.nectarSprite, p.x - s / 2, p.y - s / 2, s, s);
+      fx.globalCompositeOperation = 'source-over';
+    } else {
+      fx.globalAlpha = alpha;
+      fx.fillStyle = `rgb(${p.c[0] | 0},${p.c[1] | 0},${p.c[2] | 0})`;
+      fx.beginPath();
+      fx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      fx.fill();
+    }
+    fx.globalAlpha = 1;
   }
 
   private r3d() {
@@ -236,6 +459,12 @@ export class IntroEngine {
 
     this.pointer.x += (this.pointer.tx - this.pointer.x) * 0.04;
     this.pointer.y += (this.pointer.ty - this.pointer.y) * 0.04;
+
+    if (this.reb) {
+      this.frameRebirth(now, t, dt, dtMs);
+      this.raf = requestAnimationFrame(this.frame);
+      return;
+    }
 
     const warmth = phase === 'reveal' ? clamp((t - TIMELINE.reveal) / 2000) : phase === 'gather' ? 0.4 * clamp((t - TIMELINE.gather) / 3000) : 0;
     this.drawBackground(t, dt, warmth);

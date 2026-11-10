@@ -8,8 +8,12 @@ import './intro.css';
 export interface DragonflyIntroProps {
   /** light emblem artwork the particles gather into */
   emblemSrc: string;
-  /** called with the screen point the experience should open from */
-  onEnter: (origin: { x: number; y: number }) => void;
+  /** the intro is finished. `handoff` means the reborn dragonfly is already in the hero. */
+  onEnter: (origin: { x: number; y: number }, handoff?: boolean) => void;
+  /** the reborn has formed and starts flying: mount the homepage beneath */
+  onReveal?: () => void;
+  /** the reborn has reached the hero: the homepage's own dragonfly takes over */
+  onHandoff?: () => void;
   /** force the still, illustrated version */
   still?: boolean;
 }
@@ -39,7 +43,7 @@ function isLite() {
  * Every beat is time-boxed, Escape or "Skip intro" jumps to the invitation,
  * and reduced motion (or no canvas) gets a still, illustrated welcome.
  */
-export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyIntroProps) {
+export default function DragonflyIntro({ emblemSrc, onEnter, onReveal, onHandoff, still }: DragonflyIntroProps) {
   const bgRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<HTMLCanvasElement>(null);
@@ -48,6 +52,8 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
   const [isStill, setStill] = useState(() => still || wantsStill());
   const [phase, setPhase] = useState<Phase>(isStill ? 'reveal' : 'arrival');
   const [ready, setReady] = useState(isStill);
+  const [stage, setStage] = useState<'intro' | 'rebirth' | 'departing' | 'handoff'>('intro');
+  const r3dRef = useRef<DragonflyRenderer | null>(null);
 
   useEffect(() => {
     if (isStill || !bgRef.current || !fxRef.current) return;
@@ -57,7 +63,7 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
     const ready = glRef.current && webglOK() && !lowPower()
       ? createDragonfly3D(glRef.current).then((r) => {
           if (cancelled) r.dispose();
-          else r3d = r;
+          else r3d = r3dRef.current = r;
         })
       : Promise.resolve();
     try {
@@ -76,6 +82,7 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
       window.clearTimeout(t);
       engine.destroy();
       r3d?.dispose();
+      r3dRef.current = null;
       engineRef.current = null;
     };
   }, [isStill, emblemSrc]);
@@ -103,17 +110,40 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const enter = () => onEnter(engineRef.current?.focus ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const origin = () => engineRef.current?.focus ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+  // Enter: the emblem melts and re-forms as the reborn dragonfly, which flies
+  // into the homepage. Without WebGL or the model, the light bloom opens instead.
+  const enter = async () => {
+    const engine = engineRef.current;
+    const r3d = r3dRef.current;
+    if (stage !== 'intro') return;
+    if (!engine || !r3d || !engine.canRebirth() || !onReveal) return onEnter(origin());
+    setStage('rebirth');
+    const ok = await Promise.race([r3d.reborn(), new Promise<boolean>((r) => window.setTimeout(() => r(false), 2500))]);
+    if (!ok) return onEnter(origin());
+    engine.rebirth({
+      onDepart: () => {
+        setStage('departing');
+        onReveal();
+      },
+      onDone: () => {
+        setStage('handoff');
+        onHandoff?.();
+        window.setTimeout(() => onEnter(origin(), true), 650);
+      },
+    });
+  };
 
   return (
-    <div className={`dfi ${isStill ? 'dfi--still' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Quinta da Libélula">
+    <div className={`dfi ${isStill ? 'dfi--still' : ''} is-${stage}`} role="dialog" aria-modal="true" aria-label="Welcome to Quinta da Libélula">
       {isStill ? (
         <div className="dfi__still" aria-hidden="true">
           <img className="dfi__still-emblem" src={emblemSrc} alt="" />
         </div>
       ) : (
         <>
-          <canvas ref={bgRef} className="dfi__canvas" aria-hidden="true" />
+          <canvas ref={bgRef} className="dfi__canvas dfi__bg" aria-hidden="true" />
           <canvas ref={glRef} className="dfi__canvas" aria-hidden="true" />
           <canvas ref={fxRef} className="dfi__canvas" aria-hidden="true" />
         </>
@@ -136,7 +166,7 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
         </button>
       </div>
 
-      {phase !== 'reveal' && (
+      {phase !== 'reveal' && stage === 'intro' && (
         <button className="dfi__skip" onClick={skip}>
           Skip intro
         </button>

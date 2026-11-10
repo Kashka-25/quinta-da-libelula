@@ -18,6 +18,7 @@ import ContactSection from './sections/ContactSection';
 import Footer from './sections/Footer';
 import { img } from './content/site';
 import { MODELS, preload, webglOK } from './three/dragonflyModel';
+import type { HeroEntry } from './three/HeroDragonfly';
 
 type Stage = 'intro' | 'crossing' | 'site';
 
@@ -38,6 +39,10 @@ export default function App() {
   const [origin, setOrigin] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const [showSite, setShowSite] = useState(stage === 'site');
   const [enquiry, setEnquiry] = useState<string>('');
+  // how the reborn dragonfly enters the hero: flown in by the intro (handoff),
+  // out of the light bloom (fly), or from beyond the trees on a direct visit
+  const [heroEntry, setHeroEntry] = useState<HeroEntry>(stage === 'site' ? 'direct' : 'fly');
+  const [heroReady, setHeroReady] = useState(true);
 
   useEffect(() => {
     document.body.classList.toggle('is-locked', stage !== 'site');
@@ -45,15 +50,27 @@ export default function App() {
 
   useScrollMotion(showSite);
 
-  const enter = useCallback((o: { x: number; y: number }) => {
+  const enter = useCallback((o: { x: number; y: number }, handoff?: boolean) => {
     markIntroSeen();
+    if (handoff) {
+      setStage('site');
+      return;
+    }
     setOrigin(o);
     setStage('crossing');
+  }, []);
+
+  const reveal = useCallback(() => {
+    setHeroEntry('handoff');
+    setHeroReady(false);
+    setShowSite(true);
   }, []);
 
   const replay = () => {
     window.scrollTo({ top: 0 });
     setShowSite(false);
+    setHeroEntry('fly');
+    setHeroReady(true);
     setKind(window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'still' : 'canvas');
     setStage('intro');
   };
@@ -70,7 +87,7 @@ export default function App() {
           <Nav />
           <Pollen />
           <main>
-            <SanctuaryHomepage arriving={stage !== 'site'} />
+            <SanctuaryHomepage arriving={stage !== 'site'} heroEntry={heroEntry} heroReady={heroReady} />
             <Sanctuary />
             <BreathPause />
             <RetreatExplorer onEnquire={enquire} />
@@ -87,7 +104,13 @@ export default function App() {
         (kind === 'film' ? (
           <CinematicIntro sources={FILM} logoSrc={img('Logo_QLL-rec.png')} onEnter={enter} onFallback={() => setKind('canvas')} />
         ) : (
-          <DragonflyIntro emblemSrc={img('Logo_QLL-emblem.png')} onEnter={enter} still={kind === 'still'} />
+          <DragonflyIntro
+            emblemSrc={img('Logo_QLL-emblem.png')}
+            onEnter={enter}
+            onReveal={reveal}
+            onHandoff={() => setHeroReady(true)}
+            still={kind === 'still'}
+          />
         ))}
       {stage === 'crossing' && (
         <IntroTransition origin={origin} onCovered={() => setShowSite(true)} onDone={() => setStage('site')} />

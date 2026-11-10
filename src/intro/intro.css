@@ -181,3 +181,40 @@
     animation: none;
   }
 }
+
+/* after Enter: the emblem re-forms as the reborn, which flies into the homepage */
+.dfi {
+  transition: background 1.4s ease, opacity 0.6s ease;
+}
+
+.dfi .dfi__bg,
+.dfi .dfi__vignette,
+.dfi .dfi__invite,
+.dfi .dfi__whisper {
+  transition: opacity 1.4s ease;
+}
+
+.dfi.is-rebirth .dfi__invite,
+.dfi.is-departing .dfi__invite,
+.dfi.is-handoff .dfi__invite {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 0.6s;
+}
+
+.dfi.is-departing,
+.dfi.is-handoff {
+  background: transparent;
+  pointer-events: none;
+}
+
+.dfi.is-departing .dfi__bg,
+.dfi.is-departing .dfi__vignette,
+.dfi.is-handoff .dfi__bg,
+.dfi.is-handoff .dfi__vignette {
+  opacity: 0;
+}
+
+.dfi.is-handoff {
+  opacity: 0;
+}

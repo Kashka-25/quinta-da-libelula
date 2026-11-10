@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useLayoutEffect, useRef } from 'react';
 import { gsap, prefersReduced } from '../components/motion';
-import HeroDragonfly from '../three/HeroDragonfly';
+import HeroDragonfly, { type HeroEntry } from '../three/HeroDragonfly';
 import { img } from '../content/site';
 import './hero.css';
 
@@ -21,11 +21,20 @@ function Words({ text, className }: { text: string; className?: string }) {
   );
 }
 
-export default function SanctuaryHomepage({ arriving: arrivingProp }: { arriving: boolean }) {
+export default function SanctuaryHomepage({
+  arriving: arrivingProp,
+  heroEntry = 'fly',
+  heroReady = true,
+}: {
+  arriving: boolean;
+  heroEntry?: HeroEntry;
+  heroReady?: boolean;
+}) {
   const ref = useRef<HTMLElement>(null);
   const arriving = useRef(arrivingProp).current;
 
-  useEffect(() => {
+  // layout effect: the headline's starting state is set before the first paint, so it never flashes
+  useLayoutEffect(() => {
     const root = ref.current!;
     if (prefersReduced()) {
       root.classList.add('is-in');
@@ -85,7 +94,7 @@ export default function SanctuaryHomepage({ arriving: arrivingProp }: { arriving
         <path d="M0 340 C 200 300 330 350 520 320 S 820 290 980 330 S 1260 360 1440 320 V400 H0Z" fill="var(--ivory)" />
       </svg>
 
-      <HeroDragonfly arriving={arriving} />
+      <HeroDragonfly entry={heroEntry} ready={heroReady} />
 
       <div className="hero__copy">
         <p className="hero__eyebrow">Eco retreat · Coimbra, Portugal</p>

@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Dragonfly, MODELS, makeRenderer, preload, webglOK } from './dragonflyModel';
+import { heroRest } from './heroRest';
+
+export type HeroEntry = 'fly' | 'handoff' | 'direct';
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -23,10 +26,15 @@ function dot() {
  * out of the light into the homepage, trailing gold, and stays hovering in the
  * hero, leaning toward the pointer. It drifts away as the visitor scrolls on.
  */
-export default function HeroDragonfly({ arriving: arrivingProp }: { arriving: boolean }) {
+export default function HeroDragonfly({ entry: entryProp, ready = true }: { entry: HeroEntry; ready?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   // how it enters is decided once, when the homepage first appears
-  const arriving = useRef(arrivingProp).current;
+  const entry = useRef(entryProp).current;
+  const arriving = entry === 'fly';
+  const handoff = entry === 'handoff';
+  // in a handoff it stays hidden until the intro's dragonfly reaches the same spot
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -98,13 +106,9 @@ export default function HeroDragonfly({ arriving: arrivingProp }: { arriving: bo
       };
       window.addEventListener('pointermove', onMove);
 
-      const rest = () => {
-        const wide = w >= 900;
-        return wide
-          ? { x: w * 0.76, y: h * 0.4, s: Math.min(w * 0.17, h * 0.32) }
-          : { x: w * 0.5, y: h * 0.13, s: Math.min(w * 0.22, h * 0.12) };
-      };
-      const start = performance.now();
+      const rest = () => heroRest(w, h);
+      let start = performance.now();
+      let shownAt = handoff ? 0 : start;
       const FLY = arriving ? 2600 : 3200;
       let last = start;
       let visible = true;
@@ -120,9 +124,16 @@ export default function HeroDragonfly({ arriving: arrivingProp }: { arriving: bo
         }
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
+        if (!shownAt) {
+          if (!readyRef.current) {
+            renderer.clear();
+            return;
+          }
+          shownAt = start = now;
+        }
         const t = reduce ? 99 : (now - start) / 1000;
         const r = rest();
-        const a = reduce ? 1 : ease(clamp((now - start) / FLY));
+        const a = reduce || handoff ? 1 : ease(clamp((now - start) / FLY));
         // from the heart of the light (arriving) or from beyond the trees (direct visit)
         const fromX = arriving ? w * 0.5 : w * 1.1;
         const fromY = arriving ? h * 0.5 : -h * 0.15;
@@ -138,13 +149,13 @@ export default function HeroDragonfly({ arriving: arrivingProp }: { arriving: bo
         mat.uniforms.size.value = 22 * Math.min(window.devicePixelRatio || 1, 1.75) * Math.min(1, s / 240);
         const bank = (1 - a) * (arriving ? -0.4 : 0.6);
         df.root.rotation.set(-0.25 + Math.sin(t * 0.8) * 0.05 + pointer.y * 0.08, pointer.x * 0.2 + Math.sin(t * 0.6) * 0.1, bank);
-        df.opacity = clamp(1 - scroll / (h * 0.85)) * clamp((now - start) / 300 + (reduce ? 1 : 0));
+        df.opacity = clamp(1 - scroll / (h * 0.85)) * clamp((now - shownAt) / (handoff ? 550 : 300) + (reduce ? 1 : 0));
         df.glow = arriving ? 1.4 * (1 - clamp((now - start) / 2200)) : 0;
         if (!reduce) df.beat(dt, 3.4 + (1 - a) * 2.2, 0.32 + (1 - a) * 0.12);
         else df.beat(0, 0, 0);
 
         // shed light from the wings while flying, then only now and then
-        if (!reduce && Math.random() < (a < 1 ? 0.9 : 0.15)) emit(x - w / 2, h / 2 - y, s * 1.4);
+        if (!reduce && Math.random() < (a < 1 ? 0.9 : handoff ? 0.08 : 0.15)) emit(x - w / 2, h / 2 - y, s * 1.4);
         for (let i = 0; i < N; i++) {
           if (life[i] <= 0) {
             alpha[i] = 0;
@@ -159,7 +170,7 @@ export default function HeroDragonfly({ arriving: arrivingProp }: { arriving: bo
         geo.attributes.alpha.needsUpdate = true;
         renderer.render(scene, camera);
         // reduced motion: a still dragonfly, drawn for a moment (layout can still settle), then on resize or scroll only
-        if (reduce && now - start > 1200) cancelAnimationFrame(raf);
+        if (reduce && now - shownAt > 1200) cancelAnimationFrame(raf);
       };
       raf = requestAnimationFrame(frame);
       const onScroll = () => reduce && requestAnimationFrame(frame);
