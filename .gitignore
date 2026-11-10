@@ -2,3 +2,10 @@ node_modules
 dist
 raw-assets
 *.log
+# Blender: large binaries stay local (rebuild with blender/scripts/build_scene.py)
+blender/source/*.glb
+blender/*.blend
+blender/*.blend1
+blender/renders/
+*.tsbuildinfo
+__pycache__/

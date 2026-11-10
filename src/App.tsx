@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import DragonflyIntro from './intro/DragonflyIntro';
+import CinematicIntro from './intro/CinematicIntro';
+import { chooseIntro, markIntroSeen, type IntroKind } from './intro/introChoice';
 import IntroTransition from './intro/IntroTransition';
 import Nav from './components/Nav';
 import Pollen from './components/Pollen';
@@ -18,18 +20,19 @@ import { img } from './content/site';
 
 type Stage = 'intro' | 'crossing' | 'site';
 
-function initialStage(): Stage {
-  const q = new URLSearchParams(window.location.search);
-  if (q.has('skip') || window.location.hash.length > 1) return 'site';
-  return 'intro';
-}
+const FILM = {
+  webm: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-720.webm`,
+  mp4: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-720.mp4`,
+  webmSmall: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-540.webm`,
+  mp4Small: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-540.mp4`,
+};
 
 export default function App() {
-  const [stage, setStage] = useState<Stage>(initialStage);
+  const [kind, setKind] = useState<IntroKind>(chooseIntro);
+  const [stage, setStage] = useState<Stage>(kind === 'none' ? 'site' : 'intro');
   const [origin, setOrigin] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const [showSite, setShowSite] = useState(stage === 'site');
   const [enquiry, setEnquiry] = useState<string>('');
-  const forceStill = new URLSearchParams(window.location.search).get('intro') === 'still';
 
   useEffect(() => {
     document.body.classList.toggle('is-locked', stage !== 'site');
@@ -38,6 +41,7 @@ export default function App() {
   useScrollMotion(showSite);
 
   const enter = useCallback((o: { x: number; y: number }) => {
+    markIntroSeen();
     setOrigin(o);
     setStage('crossing');
   }, []);
@@ -45,6 +49,7 @@ export default function App() {
   const replay = () => {
     window.scrollTo({ top: 0 });
     setShowSite(false);
+    setKind(window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'still' : 'film');
     setStage('intro');
   };
 
@@ -73,9 +78,12 @@ export default function App() {
           <Footer onReplay={replay} />
         </>
       )}
-      {(stage === 'intro' || (stage === 'crossing' && !showSite)) && (
-        <DragonflyIntro emblemSrc={img('Logo_QLL-emblem.png')} onEnter={enter} still={forceStill} />
-      )}
+      {(stage === 'intro' || (stage === 'crossing' && !showSite)) &&
+        (kind === 'film' ? (
+          <CinematicIntro sources={FILM} logoSrc={img('Logo_QLL-rec.png')} onEnter={enter} onFallback={() => setKind('canvas')} />
+        ) : (
+          <DragonflyIntro emblemSrc={img('Logo_QLL-emblem.png')} onEnter={enter} still={kind === 'still'} />
+        ))}
       {stage === 'crossing' && (
         <IntroTransition origin={origin} onCovered={() => setShowSite(true)} onDone={() => setStage('site')} />
       )}

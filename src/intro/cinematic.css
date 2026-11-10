@@ -1,0 +1,96 @@
+.cin {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #16241d, #0b1612 70%);
+}
+
+.cin__video {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.cin.is-playing .cin__video {
+  opacity: 1;
+}
+
+/* portrait phones: keep the whole wingspan in view rather than cropping to the body */
+@media (orientation: portrait) {
+  .cin__video {
+    width: 165vw;
+    height: auto;
+    object-fit: contain;
+    -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  }
+}
+
+.cin__veil {
+  position: absolute;
+  inset: 0;
+  background: var(--ivory, #f6f1e6);
+  opacity: 0;
+  transition: opacity 0.9s ease;
+  pointer-events: none;
+}
+
+.cin__veil.is-on {
+  opacity: 1;
+}
+
+.cin__door {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.cin__door img {
+  width: min(62vw, 340px);
+  height: auto;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  filter: blur(6px);
+  transition:
+    opacity 1s ease 0.2s,
+    transform 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s,
+    filter 1s ease 0.2s;
+}
+
+.cin__door.is-on img {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.cin__skip {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2;
+  font: 500 0.72rem/1 var(--sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(240, 233, 218, 0.85);
+  background: rgba(16, 25, 18, 0.35);
+  border: 1px solid rgba(240, 233, 218, 0.28);
+  border-radius: 999px;
+  padding: 11px 16px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.cin__skip:hover,
+.cin__skip:focus-visible {
+  background: rgba(240, 233, 218, 0.15);
+  color: #fff;
+}
