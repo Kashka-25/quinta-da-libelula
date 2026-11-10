@@ -16,24 +16,32 @@ npm run build    # static files in dist/ (relative paths, host anywhere)
 Handy links while presenting:
 
 - `/?skip` opens straight on the homepage.
+- `/?intro=canvas` always plays the intro (after a visit it is skipped for 7 days).
 - `/?intro=still` shows the still welcome that reduced-motion visitors get.
+- `/?intro=film` plays the Blender film instead, once its video is in `public/intro/`.
 - Press **Escape** during the intro to jump to the invitation.
+- To see the intro again, use "Watch the dragonfly again" in the footer.
 
 ## The journey
 
-1. **The melting dragonfly** (`src/intro/`). A dragonfly hovers in a sunlit forest
-   (it follows the pointer a little), then melts: wings first, then the body,
-   into pigment, petals, watercolour blooms and golden nectar. The pigment
-   travels through the air and settles into the Quinta's own emblem, then
-   "Enter the Experience" appears. Every beat is time-boxed, there's a skip
-   button, and reduced motion or no canvas gets a still illustrated welcome.
+1. **The melting dragonfly** (`src/intro/`). The Prismatic Dragonfly (the Meshy
+   model, live in 3D) flies into a sunlit forest and hovers, leaning toward the
+   pointer. Then it melts: a snapshot of the real model becomes pigment, so its
+   own iridescent colours flow into petals, watercolour blooms and golden
+   nectar. The pigment travels through the air and settles into the Quinta's
+   emblem, and "Enter the Experience" appears. Every beat is time-boxed and
+   there's a skip button. Reduced motion gets a still welcome. Without WebGL,
+   or on low-memory devices, the hand-drawn dragonfly stands in.
    - `engine.ts` is the canvas engine with no React in it, so the sequence can
      be refined or reused alone. Timings live in `TIMELINE`.
+   - `dragonfly3d.ts` draws the 3D model at the pose the engine decides.
    - `DragonflyIntro.tsx` is the reusable component: `<DragonflyIntro emblemSrc onEnter />`.
    - `IntroTransition.tsx` is the bloom of light that opens into the site.
-2. **Homepage** (`SanctuaryHomepage`): layered mountain parallax, mist, a small
-   dragonfly that crosses the sky, and the line "Some places invite you to
-   visit. Others invite you to return to yourself."
+2. **Homepage** (`SanctuaryHomepage`): layered mountain parallax and mist. The
+   reborn Prismatic Lotus Dragonfly (`src/three/HeroDragonfly.tsx`, live 3D)
+   flies out of the light, trailing gold, and hovers beside the line "Some
+   places invite you to visit. Others invite you to return to yourself." It
+   drifts away as you scroll.
 3. **Sanctuary**, then **a pause for one guided breath** (`BreathPause`).
 4. **Retreats** (`RetreatExplorer`): tilting arch cards that open a drawer, with
    enquiry wired to the form.
@@ -65,6 +73,16 @@ Photographs and logos are local copies from quintadalibelula.center (no
 hotlinking), resized by `npm run images` from originals kept in `raw-assets/`
 (not committed). The forest, dragonfly, teepee, map and dome art are drawn in
 code.
+
+## The 3D dragonflies
+
+`public/models/` holds web versions of both Meshy models (about 850 KB each:
+70k triangles, Draco compression, WebP textures, and the same rig as the film).
+They are made by `blender/scripts/export_web_models.py` from the originals in
+`blender/source/`. The Draco decoder is served locally from `public/draco/`.
+`src/three/dragonflyModel.ts` loads them and adds thin-film iridescence,
+translucent wings and wingbeats on the rig. Hind wings lead the fore wings by a
+quarter beat.
 
 ## Stack
 

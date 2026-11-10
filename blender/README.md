@@ -115,16 +115,26 @@ On a machine with a dedicated GPU, render `final` and encode a 1080p file too.
 
 ## In the website
 
-The film is played by `src/intro/CinematicIntro.tsx`. `src/intro/introChoice.ts`
-decides which welcome each visitor gets:
+The default welcome is the live one: the Meshy dragonfly in 3D, melting into
+the emblem (see the main README). The film is ready as an alternative and plays
+with `?intro=film` once its videos are in `public/intro/`. It's played by
+`src/intro/CinematicIntro.tsx`, and `src/intro/introChoice.ts` decides which
+welcome each visitor gets:
 
 | Visitor | Welcome |
 | --- | --- |
-| First visit | The film: WebM (VP9) first, MP4 (H.264) for Safari. The 540p cut goes to phones and data-saver connections. |
+| First visit | The live 3D melting dragonfly. With `?intro=film`, the film: WebM (VP9) first, MP4 (H.264) for Safari, and a 540p cut for phones and data-saver connections. |
 | Saw it in the last 7 days | Straight to the homepage. The footer has "Watch the dragonfly again". |
 | Prefers reduced motion | The still, illustrated welcome. |
-| Low memory or data saver | The lightweight canvas dragonfly. |
-| Film missing, blocked or slow to start (4.5 s) | Falls back to the canvas dragonfly. |
+| Low memory, data saver or no WebGL | The hand-drawn canvas dragonfly. |
+| Film missing, blocked or slow to start (4.5 s) | Falls back to the melting dragonfly. |
+
+The web versions of both models (`public/models/`) come from
+`blender/scripts/export_web_models.py`:
+
+```bash
+blender -b -P blender/scripts/export_web_models.py -- --tris 70000 --tex 1024
+```
 
 The film plays muted, so browsers allow autoplay. Escape or "Skip intro" goes
 straight in. In the last 0.9 s an ivory veil covers the video, the Quinta's

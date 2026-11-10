@@ -7,6 +7,7 @@
 // reveal    the real emblem appears; the page shows "Enter the Experience"
 
 import { drawDragonfly, type Pose } from './dragonfly';
+import type { DragonflyRenderer } from './dragonfly3d';
 import { buildStatic, drawAtmosphere, glowSprite, makeMotes, PAD, seeded, type Mist, type Mote } from './scene';
 
 export type Phase = 'arrival' | 'melt' | 'gather' | 'reveal';
@@ -70,6 +71,10 @@ export interface EngineOptions {
   onPhase: (p: Phase) => void;
   /** fewer particles for small or low-memory devices */
   lite?: boolean;
+  /** the live 3D dragonfly, once it has loaded (null until then, or if WebGL is unavailable) */
+  renderer?: () => DragonflyRenderer | null;
+  /** hold the story at its first moment until this settles (the 3D model loading); never longer than 3.5 s */
+  ready?: Promise<unknown>;
 }
 
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -103,6 +108,8 @@ export class IntroEngine {
   private gatherReady = false;
   private offset = 0; // added to elapsed when skipping
   private destroyed = false;
+  private holding = false;
+  private cleared3d = false;
 
   constructor(private bgCanvas: HTMLCanvasElement, private fxCanvas: HTMLCanvasElement, private opts: EngineOptions) {
     this.bg = bgCanvas.getContext('2d')!;
@@ -116,6 +123,18 @@ export class IntroEngine {
     window.addEventListener('resize', this.resize);
     window.addEventListener('pointermove', this.onPointer);
     this.start = this.last = performance.now();
+    if (opts.ready) {
+      this.holding = true;
+      const release = () => {
+        if (this.holding) {
+          this.holding = false;
+          this.start = performance.now() - this.offset;
+          this.offset = 0;
+        }
+      };
+      opts.ready.then(release, release);
+      window.setTimeout(release, 3500);
+    }
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -134,6 +153,18 @@ export class IntroEngine {
     this.blooms = [];
     this.petals = [];
     this.meltReady = this.gatherReady = true;
+    this.holding = false;
+    this.clear3d();
+  }
+
+  private r3d() {
+    return this.opts.renderer?.() ?? null;
+  }
+
+  private clear3d() {
+    if (this.cleared3d) return;
+    this.cleared3d = true;
+    this.r3d()?.clear();
   }
 
   /** Centre of the emblem's dragonfly, for the page transition. */
@@ -195,6 +226,7 @@ export class IntroEngine {
     const dtMs = Math.min(50, now - this.last);
     this.last = now;
     const dt = dtMs / 16.67;
+    if (this.holding) this.start = now - this.offset;
     const t = now - this.start + this.offset;
 
     const phase: Phase = t < TIMELINE.melt ? 'arrival' : t < TIMELINE.gather ? 'melt' : t < TIMELINE.reveal ? 'gather' : 'reveal';
@@ -220,20 +252,24 @@ export class IntroEngine {
       fx.restore();
     }
 
+    const r3d = this.r3d();
     if (phase === 'arrival') {
       this.updatePose(t);
-      drawDragonfly(fx, this.pose, clamp(t / 1800));
+      if (r3d) r3d.draw(this.pose, clamp(t / 900), dtMs / 1000);
+      else drawDragonfly(fx, this.pose, clamp(t / 1800));
     } else if (phase === 'melt') {
       const m = t - TIMELINE.melt;
       if (m < 1000) {
         fx.clearRect(0, 0, this.w, this.h);
         this.updatePose(t);
-        drawDragonfly(fx, this.pose, 1 - m / 1000);
-      }
+        if (r3d) r3d.draw(this.pose, 1 - m / 1000, dtMs / 1000);
+        else drawDragonfly(fx, this.pose, 1 - m / 1000);
+      } else this.clear3d();
       this.updateMelt(m, t, dt);
     } else if (phase === 'gather') {
       this.updateGather(t - TIMELINE.gather, t);
     } else {
+      this.clear3d();
       this.drawReveal(t - TIMELINE.reveal, t);
     }
 
@@ -242,11 +278,15 @@ export class IntroEngine {
 
   private updatePose(t: number) {
     const s = this.bodyLength();
+    const hx = this.w / 2 + Math.sin(t * 0.00071) * this.w * 0.025 + this.pointer.x * 14;
+    const hy = this.h * 0.45 + Math.sin(t * 0.0013) * this.h * 0.014 + this.pointer.y * 10 + s * 0.12;
+    // it flies in from the upper right, swooping down, banking, then settles to hover
+    const a = ease(clamp(t / 2800));
     this.pose = {
-      x: this.w / 2 + Math.sin(t * 0.00071) * this.w * 0.025 + this.pointer.x * 14,
-      y: this.h * 0.45 + Math.sin(t * 0.0013) * this.h * 0.014 + this.pointer.y * 10 + s * 0.12,
-      s,
-      rot: Math.sin(t * 0.0009) * 0.035 + this.pointer.x * 0.04,
+      x: mix(this.w * 1.05, hx, a),
+      y: mix(-this.h * 0.12, hy, a) + Math.sin(a * Math.PI) * this.h * 0.1,
+      s: s * (0.4 + 0.6 * a),
+      rot: Math.sin(t * 0.0009) * 0.035 + this.pointer.x * 0.04 + (1 - a) * 0.6,
       t,
     };
   }
@@ -326,7 +366,12 @@ export class IntroEngine {
     off.width = this.w;
     off.height = this.h;
     const octx = off.getContext('2d', { willReadFrequently: true })!;
-    drawDragonfly(octx, this.pose, 1, false);
+    const r3d = this.r3d();
+    if (r3d) {
+      // melt exactly what the visitor sees: a snapshot of the live 3D dragonfly
+      r3d.draw(this.pose, 1, 0);
+      octx.drawImage(r3d.canvas, 0, 0, this.w, this.h);
+    } else drawDragonfly(octx, this.pose, 1, false);
     const data = octx.getImageData(0, 0, this.w, this.h).data;
     const max = this.opts.lite ? 1300 : 2800;
     const step = Math.max(2, Math.round(this.pose.s / 110));

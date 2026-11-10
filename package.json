@@ -12,11 +12,13 @@
   "dependencies": {
     "gsap": "^3.12.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^4.3.4",
     "sharp": "^0.33.5",
     "typescript": "^5.6.3",

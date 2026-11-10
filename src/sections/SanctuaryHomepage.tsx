@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react';
 import { gsap, prefersReduced } from '../components/motion';
+import HeroDragonfly from '../three/HeroDragonfly';
 import { img } from '../content/site';
 import './hero.css';
 
@@ -20,8 +21,9 @@ function Words({ text, className }: { text: string; className?: string }) {
   );
 }
 
-export default function SanctuaryHomepage({ arriving }: { arriving: boolean }) {
+export default function SanctuaryHomepage({ arriving: arrivingProp }: { arriving: boolean }) {
   const ref = useRef<HTMLElement>(null);
+  const arriving = useRef(arrivingProp).current;
 
   useEffect(() => {
     const root = ref.current!;
@@ -83,9 +85,7 @@ export default function SanctuaryHomepage({ arriving }: { arriving: boolean }) {
         <path d="M0 340 C 200 300 330 350 520 320 S 820 290 980 330 S 1260 360 1440 320 V400 H0Z" fill="var(--ivory)" />
       </svg>
 
-      <div className="hero__fly" aria-hidden="true">
-        <img src={img('Logo_QLL-Libelula.png')} alt="" />
-      </div>
+      <HeroDragonfly arriving={arriving} />
 
       <div className="hero__copy">
         <p className="hero__eyebrow">Eco retreat · Coimbra, Portugal</p>

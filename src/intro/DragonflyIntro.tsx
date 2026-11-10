@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { IntroEngine, TIMELINE, type Phase } from './engine';
+import { createDragonfly3D, type DragonflyRenderer } from './dragonfly3d';
+import { webglOK } from '../three/dragonflyModel';
+import { lowPower } from './introChoice';
 import './intro.css';
 
 export interface DragonflyIntroProps {
@@ -39,6 +42,7 @@ function isLite() {
 export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyIntroProps) {
   const bgRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<HTMLCanvasElement>(null);
+  const glRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<IntroEngine | null>(null);
   const enterRef = useRef<HTMLButtonElement>(null);
   const [isStill, setStill] = useState(() => still || wantsStill());
@@ -48,8 +52,16 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
   useEffect(() => {
     if (isStill || !bgRef.current || !fxRef.current) return;
     let engine: IntroEngine;
+    let r3d: DragonflyRenderer | null = null;
+    let cancelled = false;
+    const ready = glRef.current && webglOK() && !lowPower()
+      ? createDragonfly3D(glRef.current).then((r) => {
+          if (cancelled) r.dispose();
+          else r3d = r;
+        })
+      : Promise.resolve();
     try {
-      engine = new IntroEngine(bgRef.current, fxRef.current, { emblemSrc, onPhase: setPhase, lite: isLite() });
+      engine = new IntroEngine(bgRef.current, fxRef.current, { emblemSrc, onPhase: setPhase, lite: isLite(), renderer: () => r3d, ready });
     } catch {
       setStill(true);
       setPhase('reveal');
@@ -60,8 +72,10 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
     // safety net: the invitation always appears, even if frames stall
     const t = window.setTimeout(() => setPhase('reveal'), TIMELINE.reveal + 4000);
     return () => {
+      cancelled = true;
       window.clearTimeout(t);
       engine.destroy();
+      r3d?.dispose();
       engineRef.current = null;
     };
   }, [isStill, emblemSrc]);
@@ -100,6 +114,7 @@ export default function DragonflyIntro({ emblemSrc, onEnter, still }: DragonflyI
       ) : (
         <>
           <canvas ref={bgRef} className="dfi__canvas" aria-hidden="true" />
+          <canvas ref={glRef} className="dfi__canvas" aria-hidden="true" />
           <canvas ref={fxRef} className="dfi__canvas" aria-hidden="true" />
         </>
       )}

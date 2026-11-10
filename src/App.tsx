@@ -17,6 +17,7 @@ import CommunitySection from './sections/CommunitySection';
 import ContactSection from './sections/ContactSection';
 import Footer from './sections/Footer';
 import { img } from './content/site';
+import { MODELS, preload, webglOK } from './three/dragonflyModel';
 
 type Stage = 'intro' | 'crossing' | 'site';
 
@@ -28,6 +29,10 @@ const FILM = {
 };
 
 export default function App() {
+  // fetch the reborn dragonfly while the intro plays, so it's ready for the homepage
+  useEffect(() => {
+    if (webglOK()) preload(MODELS.reborn).catch(() => {});
+  }, []);
   const [kind, setKind] = useState<IntroKind>(chooseIntro);
   const [stage, setStage] = useState<Stage>(kind === 'none' ? 'site' : 'intro');
   const [origin, setOrigin] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -49,7 +54,7 @@ export default function App() {
   const replay = () => {
     window.scrollTo({ top: 0 });
     setShowSite(false);
-    setKind(window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'still' : 'film');
+    setKind(window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'still' : 'canvas');
     setStage('intro');
   };
 
