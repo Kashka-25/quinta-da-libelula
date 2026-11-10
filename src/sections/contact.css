@@ -174,3 +174,9 @@
     gap: 4px;
   }
 }
+
+.contact__logo {
+  width: auto;
+  height: 54px;
+  margin-bottom: 6px;
+}

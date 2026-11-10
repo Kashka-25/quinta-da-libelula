@@ -38,10 +38,7 @@ export default function Nav() {
   return (
     <header className={`nav ${solid ? 'nav--solid' : ''} ${open ? 'nav--open' : ''}`}>
       <a href="#home" className="nav__brand" aria-label="Quinta da Libélula, back to the top" onClick={() => setOpen(false)}>
-        <img src={img('Logo_QLL-Libelula.png')} alt="" width="34" height="22" />
-        <span>
-          Quinta da <em>Libélula</em>
-        </span>
+        <img src={img('Logo_QLL-rec.png')} alt="Quinta da Libélula" width="508" height="180" />
       </a>
       <span className="nav__concept" title="This is a design concept, not the official website">
         Concept

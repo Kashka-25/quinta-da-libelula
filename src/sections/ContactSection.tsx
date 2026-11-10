@@ -69,6 +69,7 @@ export default function ContactSection({ topic, onTopic }: { topic: string; onTo
                 setSent(true);
               }}
             >
+              <img className="contact__logo" src={img('Logo_QLL-rec.png')} alt="Quinta da Libélula" width="508" height="180" />
               <p className="contact__demo">
                 <span className="demo-tag">Demo form</span> Nothing you type here leaves this page.
               </p>

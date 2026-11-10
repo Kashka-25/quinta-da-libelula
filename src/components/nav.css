@@ -37,13 +37,9 @@
   white-space: nowrap;
 }
 
-.nav__brand em {
-  font-style: italic;
-}
-
 .nav__brand img {
-  width: 34px;
-  height: auto;
+  width: auto;
+  height: 40px;
   transition: filter 0.5s ease;
   filter: brightness(0) invert(0.94) sepia(0.25);
 }
