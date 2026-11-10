@@ -1,0 +1,202 @@
+.practices {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(217, 160, 91, 0.16), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(185, 163, 208, 0.14), transparent 50%),
+    var(--forest);
+  color: var(--ivory);
+  overflow: hidden;
+}
+
+.practices .eyebrow {
+  color: var(--amber);
+}
+
+.practices .display em {
+  color: var(--amber);
+}
+
+.practices .lede {
+  color: rgba(246, 241, 230, 0.75);
+}
+
+.practices__track {
+  display: flex;
+  align-items: center;
+  gap: clamp(40px, 6vw, 110px);
+  height: 100vh;
+  padding: 0 var(--gutter);
+  width: max-content;
+}
+
+.practices__intro {
+  width: min(520px, 80vw);
+  flex: none;
+}
+
+.practices__intro .display {
+  margin-bottom: 24px;
+}
+
+.practices__path {
+  width: 240px;
+  margin-top: 30px;
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 7;
+  animation: path-walk 3s linear infinite;
+}
+
+@keyframes path-walk {
+  to {
+    stroke-dashoffset: -44;
+  }
+}
+
+.prac {
+  flex: none;
+  width: clamp(300px, 34vw, 480px);
+  display: grid;
+  gap: 22px;
+}
+
+.prac--low {
+  transform: translateY(9vh);
+}
+
+.prac--high {
+  transform: translateY(-7vh);
+}
+
+.prac__img {
+  aspect-ratio: 4 / 5;
+  border-radius: 200px;
+  overflow: hidden;
+  background: var(--moss);
+}
+
+.prac--low .prac__img {
+  border-radius: 24px 200px 24px 200px;
+}
+
+.prac__img img {
+  width: 116%;
+  max-width: none;
+  height: 100%;
+  margin-left: -8%;
+  object-fit: cover;
+}
+
+.prac__paint {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(201, 120, 90, 0.85), transparent 45%),
+    radial-gradient(circle at 70% 40%, rgba(185, 163, 208, 0.9), transparent 45%),
+    radial-gradient(circle at 45% 75%, rgba(217, 160, 91, 0.85), transparent 50%),
+    radial-gradient(circle at 75% 85%, rgba(159, 181, 138, 0.8), transparent 45%),
+    #2b2433;
+  background-size: 160% 160%;
+  filter: blur(8px) saturate(1.1);
+  animation: paint 14s ease-in-out infinite alternate;
+}
+
+@keyframes paint {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 80%;
+  }
+}
+
+.prac__text {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 18px;
+  align-items: baseline;
+}
+
+.prac__no {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+}
+
+.prac__text h3 {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+  margin: 0;
+}
+
+.prac__text p {
+  grid-column: 2;
+  margin: 6px 0 0;
+  color: rgba(246, 241, 230, 0.72);
+  max-width: 32ch;
+}
+
+.practices__end {
+  flex: none;
+  width: 30vw;
+  display: grid;
+  place-items: center;
+}
+
+.practices__end img {
+  width: 90px;
+  filter: brightness(0) invert(0.9) sepia(0.4);
+  opacity: 0.6;
+}
+
+@media (max-width: 899px), (prefers-reduced-motion: reduce) {
+  .practices__track {
+    width: auto;
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    padding: clamp(96px, 14vw, 140px) var(--gutter);
+    gap: 64px;
+    max-width: var(--max);
+    margin: 0 auto;
+  }
+  .practices__intro,
+  .prac {
+    width: 100%;
+  }
+  .prac--low,
+  .prac--high {
+    transform: none;
+  }
+  .prac--low {
+    margin-left: 12%;
+  }
+  .prac--high {
+    margin-right: 12%;
+  }
+  .prac__img {
+    aspect-ratio: 4 / 4.4;
+  }
+  .practices__end {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .practices__track {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .practices__intro {
+    grid-column: 1 / -1;
+  }
+  .prac--low,
+  .prac--high {
+    margin: 0;
+  }
+  .prac--low {
+    margin-top: 60px;
+  }
+}

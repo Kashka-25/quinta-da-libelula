@@ -1,0 +1,350 @@
+.land {
+  --sky-top: #bcd3cf;
+  --sky-bottom: #f1e6c8;
+  --orb: #fff3d1;
+  --hill1: #9cae86;
+  --hill2: #6f8a5d;
+  --hill3: #4d6643;
+  --tree: #2f4430;
+  --ink-on: var(--ink);
+  --night: 0;
+  background: var(--parchment);
+  transition: background 1.2s ease;
+}
+
+.land--dawn {
+  --sky-top: #c7b6d6;
+  --sky-bottom: #f6cfae;
+  --orb: #ffd9b0;
+  --hill1: #a59ab0;
+  --hill2: #7d8a74;
+  --hill3: #56664c;
+}
+
+.land--dusk {
+  --sky-top: #5d5378;
+  --sky-bottom: #e6a57b;
+  --orb: #ffb27a;
+  --hill1: #6b5f72;
+  --hill2: #4b5747;
+  --hill3: #34432f;
+  --tree: #223122;
+}
+
+.land--night {
+  --sky-top: #0f1726;
+  --sky-bottom: #2b3346;
+  --orb: #f3ecd6;
+  --hill1: #2a3340;
+  --hill2: #1f2a26;
+  --hill3: #16201a;
+  --tree: #0f1712;
+  --night: 1;
+  background: #1a2219;
+  color: var(--ivory);
+}
+
+.land--night .eyebrow,
+.land--night .display em {
+  color: var(--amber);
+}
+
+.land__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.land__times {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(27, 36, 24, 0.08);
+}
+
+.land--night .land__times {
+  background: rgba(246, 241, 230, 0.1);
+}
+
+.land__times button {
+  border: 0;
+  background: transparent;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+.land__times button.is-on {
+  background: var(--forest);
+  color: var(--ivory);
+}
+
+.land--night .land__times button.is-on {
+  background: var(--ivory);
+  color: var(--ink);
+}
+
+.land__stage {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.land__map {
+  position: relative;
+  border-radius: 28px;
+  overflow: hidden;
+  aspect-ratio: 1000 / 640;
+  box-shadow: 0 40px 80px -50px rgba(27, 36, 24, 0.6);
+}
+
+.land__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sky-top {
+  stop-color: var(--sky-top);
+  transition: stop-color 1.2s ease;
+}
+
+.sky-bottom {
+  stop-color: var(--sky-bottom);
+  transition: stop-color 1.2s ease;
+}
+
+.land__svg * {
+  transition: fill 1.2s ease, stroke 1.2s ease, opacity 1.2s ease, transform 1.6s var(--ease);
+}
+
+.land__orb {
+  fill: var(--orb);
+  filter: drop-shadow(0 0 30px var(--orb));
+}
+
+.land--dawn .land__orb {
+  transform: translate(-560px, 120px);
+}
+
+.land--dusk .land__orb {
+  transform: translate(60px, 110px);
+}
+
+.land--night .land__orb {
+  transform: translate(-300px, -20px) scale(0.6);
+}
+
+.hill--1 {
+  fill: var(--hill1);
+}
+
+.hill--2 {
+  fill: var(--hill2);
+}
+
+.hill--3 {
+  fill: var(--hill3);
+}
+
+.tree {
+  fill: var(--tree);
+  opacity: 0.8;
+}
+
+.terrace {
+  fill: none;
+  stroke: rgba(246, 241, 230, 0.18);
+  stroke-width: 2;
+}
+
+.trail {
+  fill: none;
+  stroke: rgba(246, 241, 230, 0.75);
+  stroke-width: 2.5;
+  stroke-dasharray: 2 9;
+  stroke-linecap: round;
+  animation: trail 20s linear infinite;
+}
+
+@keyframes trail {
+  to {
+    stroke-dashoffset: -220;
+  }
+}
+
+.land__fireflies i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffe9a6;
+  box-shadow: 0 0 10px 3px rgba(255, 220, 130, 0.7);
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.land--night .land__fireflies i,
+.land--dusk .land__fireflies i:nth-child(3n) {
+  opacity: 1;
+  animation: firefly 4.5s ease-in-out infinite alternate;
+}
+
+@keyframes firefly {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(18px, -14px);
+    opacity: 0.3;
+  }
+}
+
+.pin {
+  position: absolute;
+  translate: -50% -50%;
+  border: 0;
+  background: none;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+}
+
+.pin__dot {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ivory);
+  box-shadow: 0 0 0 4px rgba(246, 241, 230, 0.3);
+  transition: transform 0.4s var(--ease), background 0.4s ease;
+}
+
+.pin__dot::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(246, 241, 230, 0.7);
+  animation: ping 2.6s ease-out infinite;
+}
+
+@keyframes ping {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.pin__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ivory);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.4s ease, transform 0.4s var(--ease);
+}
+
+.pin:hover .pin__label,
+.pin:focus-visible .pin__label,
+.pin.is-on .pin__label {
+  opacity: 1;
+  transform: none;
+}
+
+.pin.is-on .pin__dot {
+  background: var(--amber);
+  transform: scale(1.3);
+}
+
+.land__note {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  background: rgba(246, 241, 230, 0.85);
+}
+
+.land__card {
+  background: var(--ivory);
+  color: var(--ink);
+  border-radius: 28px;
+  padding: 14px 14px 26px;
+  animation: rise 0.7s var(--ease) both;
+}
+
+.land__card-img {
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.land__card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: settle-in 1.6s var(--ease) both;
+}
+
+.land__glow {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 50% 80%, rgba(255, 196, 110, 0.95), rgba(201, 120, 90, 0.5) 30%, transparent 60%),
+    linear-gradient(#2a2a3a, #1a1a20);
+  animation: flicker 2.4s ease-in-out infinite alternate;
+}
+
+.land__glow--teepees {
+  background:
+    radial-gradient(circle at 50% 70%, rgba(243, 234, 214, 0.95), transparent 30%),
+    linear-gradient(#5d5378, #e6a57b);
+  animation: none;
+}
+
+.land__card h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.6rem;
+  margin: 0 12px 6px;
+}
+
+.land__card p {
+  margin: 0 12px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 960px) {
+  .land__stage {
+    grid-template-columns: 1fr;
+  }
+  .land__map {
+    aspect-ratio: 4 / 3.6;
+  }
+  .pin__label {
+    display: none;
+  }
+  .pin.is-on .pin__label {
+    display: inline;
+  }
+}

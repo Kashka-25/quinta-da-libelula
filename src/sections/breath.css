@@ -1,0 +1,116 @@
+.breath {
+  position: relative;
+  min-height: 88vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(159, 181, 138, 0.18), transparent 60%),
+    var(--forest-deep);
+  color: var(--ivory);
+  overflow: hidden;
+  padding: 140px var(--gutter);
+}
+
+.breath__orb {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.breath__orb i {
+  position: absolute;
+  width: min(38vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(240, 217, 168, 0.55), rgba(159, 181, 138, 0.25) 45%, rgba(185, 163, 208, 0.15) 70%, transparent 72%);
+  filter: blur(2px);
+  transform: scale(0.75);
+  transition: transform 4s cubic-bezier(0.37, 0, 0.63, 1), opacity 4s ease;
+  animation: idle 7s ease-in-out infinite alternate;
+}
+
+.breath__orb i:nth-child(2) {
+  border: 1px solid rgba(240, 233, 218, 0.25);
+  background: none;
+  transform: scale(1);
+  animation-delay: -2s;
+}
+
+.breath__orb i:nth-child(3) {
+  border: 1px solid rgba(240, 233, 218, 0.12);
+  background: none;
+  transform: scale(1.35);
+  animation-delay: -4s;
+}
+
+@keyframes idle {
+  to {
+    translate: 0 -6px;
+  }
+}
+
+.breath__orb.is-in i {
+  transform: scale(1.7);
+  transition-duration: 4s;
+}
+
+.breath__orb.is-in i:nth-child(2) {
+  transform: scale(2.1);
+}
+
+.breath__orb.is-in i:nth-child(3) {
+  transform: scale(2.6);
+}
+
+.breath__orb.is-hold i {
+  transform: scale(1.75);
+}
+
+.breath__orb.is-hold i:nth-child(2) {
+  transform: scale(2.15);
+}
+
+.breath__orb.is-hold i:nth-child(3) {
+  transform: scale(2.65);
+}
+
+.breath__orb.is-out i,
+.breath__orb.is-done i {
+  transition-duration: 6s;
+}
+
+.breath__copy {
+  position: relative;
+  text-align: center;
+  display: grid;
+  gap: 26px;
+  justify-items: center;
+}
+
+.breath__state {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(1.8rem, 4.4vw, 3.4rem);
+  margin: 0;
+  max-width: 18ch;
+  line-height: 1.15;
+}
+
+.breath__btn {
+  border: 1px solid rgba(246, 241, 230, 0.45);
+  background: rgba(246, 241, 230, 0.06);
+  border-radius: 999px;
+  padding: 14px 26px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+.breath__btn:hover {
+  background: var(--ivory);
+  color: var(--ink);
+}
