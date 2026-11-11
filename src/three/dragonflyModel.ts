@@ -24,6 +24,7 @@ function getLoader() {
     const draco = new DRACOLoader();
     draco.setDecoderPath(`${BASE}draco/`);
     draco.setDecoderConfig({ type: 'wasm' });
+    draco.preload(); // fetch and compile the decoder while the model downloads
     loader = new GLTFLoader();
     loader.setDRACOLoader(draco);
   }
@@ -179,12 +180,19 @@ export function makeRenderer(canvas: HTMLCanvasElement, opts: { preserve?: boole
   return { renderer, scene };
 }
 
-/** Is WebGL usable here at all? */
+let glProbe: boolean | null = null;
+
+/** Is WebGL 2 usable here? (Probed once; the probe's context is released straight away.) */
 export function webglOK() {
+  if (glProbe !== null) return glProbe;
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    // three r170 renders with WebGL 2 only
+    const gl = c.getContext('webgl2');
+    glProbe = !!gl;
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
   } catch {
-    return false;
+    glProbe = false;
   }
+  return glProbe;
 }

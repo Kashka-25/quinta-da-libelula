@@ -28,11 +28,15 @@ export default function Nav() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle('is-locked', open);
+    // only lock while the menu is open; never release a lock the intro still holds
     if (!open) return;
+    document.body.classList.add('is-locked');
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      document.body.classList.remove('is-locked');
+      window.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   return (

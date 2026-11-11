@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { IntroEngine, TIMELINE, type Phase } from './engine';
+import { HOLD_MAX, IntroEngine, TIMELINE, type Phase } from './engine';
 import { createDragonfly3D, type DragonflyRenderer } from './dragonfly3d';
 import { webglOK } from '../three/dragonflyModel';
 import { lowPower } from './introChoice';
@@ -54,35 +54,61 @@ export default function DragonflyIntro({ emblemSrc, onEnter, onReveal, onHandoff
   const [ready, setReady] = useState(isStill);
   const [stage, setStage] = useState<'intro' | 'rebirth' | 'departing' | 'handoff'>('intro');
   const r3dRef = useRef<DragonflyRenderer | null>(null);
+  // a model that missed the hold is built only at Enter, so the rebirth still plays
+  const lateRef = useRef<(() => Promise<void>) | null>(null);
+  const entering = useRef(false);
 
   useEffect(() => {
     if (isStill || !bgRef.current || !fxRef.current) return;
     let engine: IntroEngine;
     let r3d: DragonflyRenderer | null = null;
     let cancelled = false;
-    const ready = glRef.current && webglOK() && !lowPower()
-      ? createDragonfly3D(glRef.current).then((r) => {
+    let released = false;
+    const gl = glRef.current;
+    const use3d = !!gl && webglOK() && !lowPower();
+    // if the story starts without it (HOLD_MAX passed), don't build a renderer mid-flight:
+    // createDragonfly3D bails out before touching the GPU, and Enter builds it instead
+    const loading = use3d
+      ? createDragonfly3D(gl, () => cancelled || released).then((r) => {
+          if (!r) return;
           if (cancelled) r.dispose();
           else r3d = r3dRef.current = r;
         })
       : Promise.resolve();
+    lateRef.current = async () => {
+      if (r3d || cancelled || !use3d) return;
+      const r = await createDragonfly3D(gl, () => cancelled).catch(() => null);
+      if (!r) return;
+      if (cancelled) r.dispose();
+      else r3d = r3dRef.current = r;
+    };
+    // the story starts when the model is ready, or after HOLD_MAX at the latest
+    const hold = Promise.race([loading.catch(() => {}), new Promise<void>((r) => window.setTimeout(r, HOLD_MAX))]);
+    // once revealed, the phase never steps back (the engine may still report its own timeline)
+    const onPhase = (p: Phase) => setPhase((cur) => (cur === 'reveal' ? cur : p));
     try {
-      engine = new IntroEngine(bgRef.current, fxRef.current, { emblemSrc, onPhase: setPhase, lite: isLite(), renderer: () => r3d, ready });
+      engine = new IntroEngine(bgRef.current, fxRef.current, { emblemSrc, onPhase, lite: isLite(), renderer: () => r3d, ready: hold });
     } catch {
+      cancelled = true; // the 3D layer must not be built for an intro that can't run
       setStill(true);
       setPhase('reveal');
       setReady(true);
       return;
     }
     engineRef.current = engine;
-    // safety net: the invitation always appears, even if frames stall
-    const t = window.setTimeout(() => setPhase('reveal'), TIMELINE.reveal + 4000);
+    // safety net: the invitation always appears, even if frames stall, counted from when the story starts
+    let t = 0;
+    hold.then(() => {
+      released = true;
+      if (!cancelled) t = window.setTimeout(() => setPhase('reveal'), TIMELINE.reveal + 4000);
+    });
     return () => {
       cancelled = true;
       window.clearTimeout(t);
       engine.destroy();
       r3d?.dispose();
       r3dRef.current = null;
+      lateRef.current = null;
       engineRef.current = null;
     };
   }, [isStill, emblemSrc]);
@@ -115,9 +141,14 @@ export default function DragonflyIntro({ emblemSrc, onEnter, onReveal, onHandoff
   // Enter: the emblem melts and re-forms as the reborn dragonfly, which flies
   // into the homepage. Without WebGL or the model, the light bloom opens instead.
   const enter = async () => {
+    if (stage !== 'intro' || entering.current) return;
+    entering.current = true;
     const engine = engineRef.current;
+    if (engine && onReveal && !r3dRef.current && lateRef.current) {
+      setStage('rebirth');
+      await lateRef.current();
+    }
     const r3d = r3dRef.current;
-    if (stage !== 'intro') return;
     if (!engine || !r3d || !engine.canRebirth() || !onReveal) return onEnter(origin());
     setStage('rebirth');
     const ok = await Promise.race([r3d.reborn(), new Promise<boolean>((r) => window.setTimeout(() => r(false), 2500))]);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import DragonflyIntro from './intro/DragonflyIntro';
 import CinematicIntro from './intro/CinematicIntro';
-import { chooseIntro, markIntroSeen, type IntroKind } from './intro/introChoice';
+import { chooseIntro, lowPower, markIntroSeen, type IntroKind } from './intro/introChoice';
 import IntroTransition from './intro/IntroTransition';
 import Nav from './components/Nav';
 import Pollen from './components/Pollen';
@@ -23,7 +23,8 @@ import type { HeroEntry } from './three/HeroDragonfly';
 type Stage = 'intro' | 'crossing' | 'site';
 
 const FILM = {
-  webm: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-720.webm`,
+  // one WebM (540p) is the fallback for both sizes: Blender's VP9 is larger than its H.264 at equal quality
+  webm: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-540.webm`,
   mp4: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-720.mp4`,
   webmSmall: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-540.webm`,
   mp4Small: `${import.meta.env.BASE_URL}intro/dragonfly-transformation-540.mp4`,
@@ -31,8 +32,12 @@ const FILM = {
 
 export default function App() {
   // fetch the reborn dragonfly while the intro plays, so it's ready for the homepage
+  // the intro's dragonfly first (only for visitors who will see it in 3D), then the reborn,
+  // so the two never compete for bandwidth while the forest is waiting
   useEffect(() => {
-    if (webglOK()) preload(MODELS.reborn).catch(() => {});
+    if (!webglOK()) return;
+    const first = chooseIntro() === 'canvas' && !lowPower() ? preload(MODELS.original).catch(() => {}) : Promise.resolve();
+    first.then(() => preload(MODELS.reborn)).catch(() => {});
   }, []);
   const [kind, setKind] = useState<IntroKind>(chooseIntro);
   const [stage, setStage] = useState<Stage>(kind === 'none' ? 'site' : 'intro');
@@ -53,6 +58,7 @@ export default function App() {
   const enter = useCallback((o: { x: number; y: number }, handoff?: boolean) => {
     markIntroSeen();
     if (handoff) {
+      setShowSite(true);
       setStage('site');
       return;
     }
@@ -67,6 +73,7 @@ export default function App() {
   }, []);
 
   const replay = () => {
+    if (stage !== 'site') return; // never mid-intro (e.g. from the footer while the reborn is still flying)
     window.scrollTo({ top: 0 });
     setShowSite(false);
     setHeroEntry('fly');
@@ -83,7 +90,8 @@ export default function App() {
   return (
     <>
       {showSite && (
-        <>
+        // the homepage is mounted beneath the intro while the reborn flies in; keep it out of reach until then
+        <div {...(stage !== 'site' ? { inert: '' } : {})}>
           <Nav />
           <Pollen />
           <main>
@@ -98,7 +106,7 @@ export default function App() {
             <ContactSection topic={enquiry} onTopic={setEnquiry} />
           </main>
           <Footer onReplay={replay} />
-        </>
+        </div>
       )}
       {(stage === 'intro' || (stage === 'crossing' && !showSite)) &&
         (kind === 'film' ? (

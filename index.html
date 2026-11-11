@@ -8,8 +8,31 @@
     <title>Quinta da Libélula — a concept</title>
     <meta name="description" content="A concept demonstration for a new Quinta da Libélula website. Not the official site." />
     <link rel="icon" href="./images/Logo_QLL-Fav_2.png" />
-    <link rel="preload" href="./models/dragonfly-original.glb" as="fetch" crossorigin="anonymous" />
-    <link rel="preload" href="./draco/draco_decoder.wasm" as="fetch" crossorigin="anonymous" />
+    <script>
+      // Start the intro's 3D dragonfly downloading before the app boots, but only for
+      // visitors who will see it (mirrors src/intro/introChoice.ts and lowPower()).
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search), intro = q.get('intro');
+          if (q.has('skip') || location.hash.length > 1 || intro === 'film' || intro === 'still') return;
+          if (intro !== 'canvas') {
+            var seen = Number(localStorage.getItem('qdl-intro-seen'));
+            if (seen > 0 && Date.now() - seen < 7 * 864e5) return;
+            if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          }
+          var n = navigator, c = n.connection;
+          if ((n.deviceMemory !== undefined && n.deviceMemory <= 2) || (c && c.saveData)) return;
+          ['./models/dragonfly-original.glb', './draco/draco_decoder.wasm'].forEach(function (href) {
+            var l = document.createElement('link');
+            l.rel = 'preload';
+            l.as = 'fetch';
+            l.crossOrigin = 'anonymous';
+            l.href = href;
+            document.head.appendChild(l);
+          });
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

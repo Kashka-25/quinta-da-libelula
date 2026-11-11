@@ -104,8 +104,9 @@ export default function CinematicIntro({ sources, logoSrc, onEnter, onFallback }
   return (
     <div className={`cin ${started ? 'is-playing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Quinta da Libélula">
       <video ref={video} className="cin__video" muted playsInline autoPlay preload="auto" aria-hidden="true">
-        <source src={webm} type="video/webm" />
+        {/* H.264 first: every current browser plays it, and Blender's encoder makes it the smaller file */}
         <source src={mp4} type="video/mp4" />
+        <source src={webm} type="video/webm" />
       </video>
       <p className="sr-only">
         A short film: a dragonfly flies into a forest clearing, melts into iridescent liquid that becomes a glowing chrysalis, and is

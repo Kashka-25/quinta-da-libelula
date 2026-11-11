@@ -112,7 +112,14 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
       const FLY = arriving ? 2600 : 3200;
       let last = start;
       let visible = true;
-      const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+      const redraw = () => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
+      };
+      const io = new IntersectionObserver(([e]) => {
+        visible = e.isIntersecting;
+        if (reduce && visible) redraw();
+      });
       io.observe(canvas);
 
       const frame = (now: number) => {
@@ -120,6 +127,7 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
         raf = requestAnimationFrame(frame);
         if (!visible || document.hidden) {
           last = now;
+          if (reduce) cancelAnimationFrame(raf); // a still frame needs no loop while hidden
           return;
         }
         const dt = Math.min(0.05, (now - last) / 1000);
@@ -150,7 +158,7 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
         const bank = (1 - a) * (arriving ? -0.4 : 0.6);
         df.root.rotation.set(-0.25 + Math.sin(t * 0.8) * 0.05 + pointer.y * 0.08, pointer.x * 0.2 + Math.sin(t * 0.6) * 0.1, bank);
         df.opacity = clamp(1 - scroll / (h * 0.85)) * clamp((now - shownAt) / (handoff ? 550 : 300) + (reduce ? 1 : 0));
-        df.glow = arriving ? 1.4 * (1 - clamp((now - start) / 2200)) : 0;
+        df.glow = arriving && !reduce ? 1.4 * (1 - clamp((now - start) / 2200)) : 0;
         if (!reduce) df.beat(dt, 3.4 + (1 - a) * 2.2, 0.32 + (1 - a) * 0.12);
         else df.beat(0, 0, 0);
 
@@ -173,7 +181,10 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
         if (reduce && now - shownAt > 1200) cancelAnimationFrame(raf);
       };
       raf = requestAnimationFrame(frame);
-      const onScroll = () => reduce && requestAnimationFrame(frame);
+      // reduced motion: redraw the still frame only when something changed (one loop at most)
+      const onScroll = () => {
+        if (reduce) redraw();
+      };
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll);
 
@@ -186,7 +197,10 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
         df.dispose();
         geo.dispose();
         mat.dispose();
+        (mat.uniforms.map.value as THREE.Texture).dispose();
         renderer.dispose();
+        // only once the canvas has left the page (a dev hot-reload re-runs effects on the same canvas)
+      if (!canvas.isConnected) renderer.forceContextLoss();
       };
     });
 

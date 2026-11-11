@@ -22,8 +22,10 @@ export interface DragonflyRenderer {
   dispose(): void;
 }
 
-export async function createDragonfly3D(canvas: HTMLCanvasElement): Promise<DragonflyRenderer> {
+export async function createDragonfly3D(canvas: HTMLCanvasElement, isCancelled: () => boolean = () => false): Promise<DragonflyRenderer | null> {
   const source = await preload(MODELS.original);
+  // the intro may have gone (or re-mounted) while the model loaded: never take its canvas
+  if (isCancelled()) return null;
   const { renderer, scene } = makeRenderer(canvas, { preserve: true });
   const models: Partial<Record<Which, Dragonfly>> = { original: new Dragonfly(source, { wingAlpha: 0.7 }) };
   scene.add(models.original!.root);
@@ -90,6 +92,9 @@ export async function createDragonfly3D(canvas: HTMLCanvasElement): Promise<Drag
       window.removeEventListener('resize', resize);
       for (const m of Object.values(models)) m?.dispose();
       renderer.dispose();
+      // browsers cap live WebGL contexts (~16): give this one back now, not at garbage collection
+      // only once the canvas has left the page (a dev hot-reload re-runs effects on the same canvas)
+      if (!canvas.isConnected) renderer.forceContextLoss();
     },
   };
 }

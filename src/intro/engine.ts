@@ -13,6 +13,9 @@ import { buildStatic, drawAtmosphere, glowSprite, makeMotes, PAD, seeded, type M
 
 export type Phase = 'arrival' | 'melt' | 'gather' | 'reveal';
 
+/** The longest the forest waits for the 3D model before the story starts without it. */
+export const HOLD_MAX = 10000;
+
 export const TIMELINE = { melt: 5400, gather: 10600, reveal: 14200 } as const;
 
 const PIGMENTS: [number, number, number][] = [
@@ -84,7 +87,7 @@ export interface EngineOptions {
   lite?: boolean;
   /** the live 3D dragonfly, once it has loaded (null until then, or if WebGL is unavailable) */
   renderer?: () => DragonflyRenderer | null;
-  /** hold the story at its first moment until this settles (the 3D model loading); never longer than 3.5 s */
+  /** hold the story at its first moment until this settles (the 3D model loading); never longer than HOLD_MAX */
   ready?: Promise<unknown>;
 }
 
@@ -145,7 +148,7 @@ export class IntroEngine {
         }
       };
       opts.ready.then(release, release);
-      window.setTimeout(release, 10000);
+      window.setTimeout(release, HOLD_MAX);
     }
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -159,6 +162,7 @@ export class IntroEngine {
 
   /** Jump straight to the emblem. */
   skip() {
+    if (this.reb) return; // the rebirth is already past the emblem
     const now = performance.now() - this.start + this.offset;
     if (now < TIMELINE.reveal) this.offset += TIMELINE.reveal + 1600 - now;
     this.particles = [];
@@ -325,7 +329,9 @@ export class IntroEngine {
           reb.cb.onDepart();
         }
         const u = ease(clamp((R - REBIRTH.depart) / (REBIRTH.done - REBIRTH.depart)));
-        const rest = heroRest(this.w, this.h);
+        const box = document.getElementById('home')?.getBoundingClientRect();
+        const hr = box ? heroRest(box.width, box.height) : heroRest(this.w, Math.max(this.h, 600));
+        const rest = box ? { x: box.left + hr.x, y: box.top + hr.y, s: hr.s } : hr;
         const pose: Pose = {
           x: mix(centre.x, rest.x, u),
           y: mix(centre.y, rest.y, u) - Math.sin(u * Math.PI) * this.h * 0.07,
@@ -431,7 +437,13 @@ export class IntroEngine {
     const E = Math.min(w * 0.9, h * 0.6, 540);
     const EH = (E * 436) / 446;
     this.emblemRect = { x: w / 2 - E / 2, y: h * 0.45 - EH / 2, w: E, h: EH };
-    if (this.gatherReady && this.particles.length) this.assignTargets(false);
+    if (this.reb) {
+      for (const p of this.particles) {
+        p.sx *= scaleX;
+        p.sy *= scaleY;
+      }
+      if (performance.now() - this.reb.start < REBIRTH.depart) this.reb.targets = false;
+    } else if (this.gatherReady && this.particles.length) this.assignTargets(false);
   };
 
   private bodyLength() {
@@ -496,6 +508,7 @@ export class IntroEngine {
       } else this.clear3d();
       this.updateMelt(m, t, dt);
     } else if (phase === 'gather') {
+      this.clear3d();
       this.updateGather(t - TIMELINE.gather, t);
     } else {
       this.clear3d();

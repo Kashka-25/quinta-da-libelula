@@ -98,7 +98,6 @@ blender -b blender/dragonfly_transformation.blend -P blender/scripts/render_fram
 blender -b blender/dragonfly_transformation.blend -P blender/scripts/render_frames.py -- --preset preview --range 1 648 --resume --out blender/renders/preview
 
 # 4. encode for the web, then move the MP4 index to the front
-blender -b --factory-startup -P blender/scripts/encode_video.py -- blender/renders/preview public/intro/dragonfly-transformation-720.webm 1280 720 MEDIUM
 blender -b --factory-startup -P blender/scripts/encode_video.py -- blender/renders/preview public/intro/dragonfly-transformation-720.mp4 1280 720 MEDIUM
 blender -b --factory-startup -P blender/scripts/encode_video.py -- blender/renders/preview public/intro/dragonfly-transformation-540.webm 960 540 LOW
 blender -b --factory-startup -P blender/scripts/encode_video.py -- blender/renders/preview public/intro/dragonfly-transformation-540.mp4 960 540 LOW
@@ -123,7 +122,7 @@ welcome each visitor gets:
 
 | Visitor | Welcome |
 | --- | --- |
-| First visit | The live 3D melting dragonfly. With `?intro=film`, the film: WebM (VP9) first, MP4 (H.264) for Safari, and a 540p cut for phones and data-saver connections. |
+| First visit | The live 3D melting dragonfly. With `?intro=film`, the film: MP4 (H.264) first, WebM (VP9) as a fallback, and a 540p cut for phones and data-saver connections. |
 | Saw it in the last 7 days | Straight to the homepage. The footer has "Watch the dragonfly again". |
 | Prefers reduced motion | The still, illustrated welcome. |
 | Low memory, data saver or no WebGL | The hand-drawn canvas dragonfly. |
@@ -149,11 +148,13 @@ the dark.
 
 - **Video over real-time 3D.** Metaballs, refraction, volumetric light and two
   1-million-triangle models aren't feasible in a browser, especially on phones.
-  Pre-rendered video gives the full look at about 4–8 MB.
+  Pre-rendered video gives the full look: 8 MB at 720p, 3 MB for phones (540p).
 - **No alpha video.** The film has its own environment, so it needs no
   transparency. That avoids WebM-alpha and HEVC-alpha support gaps.
-- **Two sizes, two codecs.** Phones fetch the smaller cut. The MP4 is
-  rewritten "faststart" so Safari can begin before the file finishes.
+- **Two sizes, two codecs.** Phones fetch the smaller cut. The MP4 (H.264)
+  comes first because Blender's VP9 encoder makes larger files at the same
+  quality, so there is a single 540p WebM, used only as a fallback. The MP4 is rewritten "faststart" so
+  Safari can begin before the file finishes.
 - **A keyframe every second.** This keeps skipping cheap.
 
 ## Not in git
