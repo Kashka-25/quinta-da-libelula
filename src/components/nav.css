@@ -28,8 +28,9 @@
 
 .nav__brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
   text-decoration: none;
   font-family: var(--serif);
   font-size: 1.15rem;
@@ -46,6 +47,23 @@
 
 .nav--solid .nav__brand img {
   filter: none;
+}
+
+/* the place, small, under the logo */
+.nav__tagline {
+  font: 600 0.52rem/1 var(--sans);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  transition: color 0.5s ease;
+}
+
+.nav--solid .nav__tagline {
+  color: var(--olive);
+}
+
+.nav--open .nav__tagline {
+  color: inherit;
 }
 
 .nav__concept {

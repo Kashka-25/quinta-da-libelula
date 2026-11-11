@@ -44,7 +44,6 @@ export default function SanctuaryHomepage({
       const tl = gsap.timeline({ delay: arriving ? 1.1 : 0.2 });
       tl.fromTo('.hero__bg', { scale: 1.14, filter: 'blur(10px)' }, { scale: 1.04, filter: 'blur(0px)', duration: 3.2, ease: 'power2.out' }, 0)
         .fromTo('.hero__ridge', { yPercent: 30 }, { yPercent: 0, duration: 2.6, ease: 'expo.out', stagger: 0.12 }, 0.1)
-        .fromTo('.hero__eyebrow', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 1.2, ease: 'power2.out' }, 0.5)
         .fromTo('.hero__w > span', { yPercent: 110, opacity: 0, rotate: 4 }, { yPercent: 0, opacity: 1, rotate: 0, duration: 1.4, ease: 'expo.out', stagger: 0.06 }, 0.7)
         .fromTo('.hero__after', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1.2, ease: 'power2.out', stagger: 0.15 }, 1.8)
         .add(() => root.classList.add('is-in'));
@@ -97,13 +96,11 @@ export default function SanctuaryHomepage({
       <HeroDragonfly entry={heroEntry} ready={heroReady} />
 
       <div className="hero__copy">
-        <p className="hero__eyebrow">Eco retreat · Coimbra, Portugal</p>
         <h2 className="hero__title">
           <Words text={LINE_1} className="hero__l1" />
           <Words text={LINE_2[0]} className="hero__l2" />
           <Words text={LINE_2[1]} className="hero__l3" />
         </h2>
-        <p className="hero__after hero__sub">Eight hectares where untouched nature meets ancient wisdom.</p>
         <div className="hero__after hero__ctas">
           <a className="hero__cta" href="#sanctuary">
             Step inside <span aria-hidden="true">↓</span>
