@@ -5,6 +5,12 @@ A standalone, front-end-only demonstration of what a new digital home for
 concept to present, not the official site, and it never touches the live
 website, its hosting or its content.
 
+## Live link
+
+https://kashka-25.github.io/quinta-da-libelula/ is an unlisted preview for Quinta da
+Libélula to review. It isn't linked from anywhere and asks search engines not to list it.
+Every push to `main` rebuilds it (`.github/workflows/deploy.yml`).
+
 ## Run it
 
 ```bash
