@@ -330,7 +330,9 @@ export class IntroEngine {
         }
         const u = ease(clamp((R - REBIRTH.depart) / (REBIRTH.done - REBIRTH.depart)));
         const box = document.getElementById('home')?.getBoundingClientRect();
-        const hr = box ? heroRest(box.width, box.height) : heroRest(this.w, Math.max(this.h, 600));
+        // (fallback before #home is laid out: the hero is 70svh, min 520px, on phones; 100svh, min 600px, elsewhere)
+        const vh = document.documentElement.clientHeight || this.h; // as HeroDragonfly reads it
+        const hr = box ? heroRest(box.width, box.height, vh) : heroRest(this.w, this.w <= 700 ? Math.max(this.h * 0.7, 520) : Math.max(this.h, 600), vh);
         const rest = box ? { x: box.left + hr.x, y: box.top + hr.y, s: hr.s } : hr;
         const pose: Pose = {
           x: mix(centre.x, rest.x, u),

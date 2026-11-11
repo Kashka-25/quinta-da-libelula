@@ -251,9 +251,18 @@
   }
 }
 
+/* phones: a shorter header, so the next section shows and invites a scroll;
+   the copy sits higher, leaving the valley below it open for the dragonfly */
+@media (max-width: 700px) {
+  .hero {
+    height: 70svh;
+    min-height: 520px;
+  }
+}
+
 @media (max-width: 640px) {
   .hero__copy {
-    top: 46%;
+    top: 40%;
   }
   .hero__fly {
     width: 34px;

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Dragonfly, MODELS, makeRenderer, preload, webglOK } from './dragonflyModel';
 import { heroRest } from './heroRest';
+import { bezier, bezierVelocity, isFree, measureSpace, nearestFree, pickFlight, type Flight, type Pt, type Space } from './roam';
 
 export type HeroEntry = 'fly' | 'handoff' | 'direct';
 
@@ -23,8 +24,10 @@ function dot() {
 
 /**
  * The reborn Prismatic Lotus Dragonfly. After "Enter the Experience" it flies
- * out of the light into the homepage, trailing gold, and stays hovering in the
- * hero, leaning toward the pointer. It drifts away as the visitor scrolls on.
+ * out of the light into the homepage, trailing gold. Then it roams the header's
+ * open sky and valley: it hovers, chooses an open spot, and flies a curved path
+ * there, never over the nav, the headline or the button. It leans toward the
+ * pointer, and drifts away as the visitor scrolls on.
  */
 export default function HeroDragonfly({ entry: entryProp, ready = true }: { entry: HeroEntry; ready?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -53,10 +56,44 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
       const camera = new THREE.PerspectiveCamera(FOV, 1, 10, 20000);
       let w = 0;
       let h = 0;
+      // free flight through the header's open space (see roam.ts)
+      const hero = canvas.parentElement!;
+      const PAD = 22; // room for the hover wobble and the lean toward the pointer
+      let space: Space | null = null;
+      // the visible height (stable while a phone's address bar slides, unlike innerHeight)
+      const visibleH = () => document.documentElement.clientHeight || window.innerHeight;
+      const measure = () => {
+        // the words are measured while the hero is at the top (they move with scroll)
+        if (window.scrollY < 40 && w && h) space = measureSpace(hero, w, h, visibleH());
+        return space;
+      };
+      // scrolling: above the words it rises away; in the valley it sinks away (never into the words)
+      let driftDir = 0;
+      let roam: { mode: 'hover' | 'fly'; base: Pt; until: number; flight: Flight | null; t0: number; dur: number } | null = null;
+      let bank = 0;
       const resize = () => {
         const host = canvas.parentElement!;
+        const ow = w;
+        const oh = h;
         w = host.clientWidth;
         h = host.clientHeight;
+        if (w === ow && h === oh) {
+          // e.g. a phone's address bar: nothing to redo, unless the visible height itself changed
+          const vh = Math.min(h, visibleH());
+          if (space && space.h !== vh) {
+            space.h = vh;
+            if (roam && roam.mode === 'hover') roam.until = 0;
+          }
+          return;
+        }
+        // keep its place in proportion; the words are re-measured before the next move
+        space = null;
+        if (roam && ow && oh) {
+          roam.base = { x: (roam.base.x * w) / ow, y: (roam.base.y * h) / oh };
+          roam.mode = 'hover';
+          roam.flight = null;
+          roam.until = 0; // re-check at once: off the words, and on screen
+        }
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         camera.position.set(0, 0, h / 2 / Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
@@ -106,7 +143,7 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
       };
       window.addEventListener('pointermove', onMove);
 
-      const rest = () => heroRest(w, h);
+      const rest = () => heroRest(w, h, visibleH());
       let start = performance.now();
       let shownAt = handoff ? 0 : start;
       const FLY = arriving ? 2600 : 3200;
@@ -144,26 +181,100 @@ export default function HeroDragonfly({ entry: entryProp, ready = true }: { entr
         const a = reduce || handoff ? 1 : ease(clamp((now - start) / FLY));
         // from the heart of the light (arriving) or from beyond the trees (direct visit)
         const fromX = arriving ? w * 0.5 : w * 1.1;
-        const fromY = arriving ? h * 0.5 : -h * 0.15;
+        // (direct visits to a valley home come up from below the ridge, never across the words)
+        const fromY = arriving ? h * 0.5 : r.y > h * 0.6 ? h * 1.05 : -h * 0.15;
         pointer.x += (pointer.tx - pointer.x) * 0.03;
         pointer.y += (pointer.ty - pointer.y) * 0.03;
-        const hover = a;
-        const x = fromX + (r.x - fromX) * a + Math.sin(a * Math.PI) * w * 0.06 + (Math.sin(t * 0.9) * 10 + pointer.x * 18) * hover;
+
+        // where it is: arriving along its entry path, then roaming the open space
+        let bx: number;
+        let by: number;
+        let vx = 0; // horizontal speed while roaming, px/s (for banking)
+        let flying = 0; // 0 hovering .. 1 mid-flight
         const scroll = window.scrollY;
-        const y = fromY + (r.y - fromY) * a - Math.sin(a * Math.PI) * h * 0.08 + (Math.sin(t * 1.4) * 8 + pointer.y * 10) * hover - scroll * 0.35;
+        const held = scroll >= 1; // the drift direction is fixed while scrolled: stay on its side of the words
+        const ctaLine = space?.ctaBottom ?? h * 0.6;
+        if (a < 1 || reduce) {
+          bx = fromX + (r.x - fromX) * a + Math.sin(a * Math.PI) * w * 0.06;
+          by = fromY + (r.y - fromY) * a - Math.sin(a * Math.PI) * h * 0.08;
+        } else {
+          if (!roam) {
+            // hover for a moment first, unless the home spot sits on the words (an unusual screen)
+            const sp = measure();
+            const ok = !sp || isFree({ x: r.x, y: r.y }, r.s, sp, PAD);
+            roam = { mode: 'hover', base: { x: r.x, y: r.y }, until: ok ? now + 2600 + Math.random() * 1800 : now, flight: null, t0: 0, dur: 0 };
+          }
+          if (roam.mode === 'hover' && now >= roam.until && !held) {
+            const sp = measure();
+            let f: Flight | null = null;
+            if (sp) {
+              if (isFree(roam.base, r.s, sp, PAD)) f = pickFlight(roam.base, r.s, sp, PAD);
+              else {
+                // its spot sits on the words (an unusual screen): move to the nearest open space
+                const q = nearestFree(roam.base, r.s, sp, PAD);
+                if (q) f = { from: roam.base, ctrl: { x: (roam.base.x + q.x) / 2, y: (roam.base.y + q.y) / 2 }, to: q };
+              }
+            }
+            if (f) {
+              const len = Math.hypot(f.ctrl.x - f.from.x, f.ctrl.y - f.from.y) + Math.hypot(f.to.x - f.ctrl.x, f.to.y - f.ctrl.y);
+              const speed = Math.min(w, h) * 0.32; // px per second: unhurried
+              roam.mode = 'fly';
+              roam.flight = f;
+              roam.t0 = now;
+              roam.dur = clamp((len / speed) * 1000, 1500, 4200);
+            } else roam.until = now + 1500;
+          }
+          if (roam.mode === 'fly' && roam.flight && held && (roam.flight.to.y > ctaLine ? 1 : -1) !== driftDir) {
+            // scrolled mid-flight toward the other side of the words: settle where it is
+            roam.mode = 'hover';
+            roam.flight = null;
+            roam.until = now;
+          }
+          if (roam.mode === 'fly' && roam.flight) {
+            const f = roam.flight;
+            const u = clamp((now - roam.t0) / roam.dur);
+            const e = 0.5 - 0.5 * Math.cos(Math.PI * u); // eases out of the hover and back into it
+            roam.base = bezier(f.from, f.ctrl, f.to, e);
+            const v = bezierVelocity(f.from, f.ctrl, f.to, e);
+            vx = v.x * ((0.5 * Math.PI * Math.sin(Math.PI * u)) / (roam.dur / 1000));
+            flying = Math.sin(Math.PI * u);
+            if (u >= 1) {
+              roam.mode = 'hover';
+              roam.flight = null;
+              roam.until = now + 1800 + Math.random() * 2600;
+            }
+          }
+          bx = roam.base.x;
+          by = roam.base.y;
+        }
+        // a hovering wobble and a lean toward the pointer (kept inside PAD), calmer in flight
+        const hover = a * (1 - 0.6 * flying);
+        const x = bx + (Math.sin(t * 0.9) * 8 + pointer.x * 12) * hover;
+        if (scroll < 1 || !driftDir) driftDir = (a < 1 ? r.y : by) > ctaLine ? 1 : -1;
+        const y = by + (Math.sin(t * 1.4) * 6 + pointer.y * 7) * hover + driftDir * scroll * 0.35;
         const s = r.s * (arriving ? 0.35 + 0.65 * a : 0.5 + 0.5 * a);
         df.root.position.set(x - w / 2, h / 2 - y, 0);
         df.root.scale.setScalar(s);
+        // dev only: lets the roaming test check every frame against the words
+        if (import.meta.env.DEV) (window as unknown as { __heroRoam?: unknown }).__heroRoam = { x, y: y - driftDir * scroll * 0.35, drawnY: y, s, a, w, h, mode: roam?.mode ?? 'entry' };
         mat.uniforms.size.value = 22 * Math.min(window.devicePixelRatio || 1, 1.75) * Math.min(1, s / 240);
-        const bank = (1 - a) * (arriving ? -0.4 : 0.6);
-        df.root.rotation.set(-0.25 + Math.sin(t * 0.8) * 0.05 + pointer.y * 0.08, pointer.x * 0.2 + Math.sin(t * 0.6) * 0.1, bank);
+        // bank into the turns while roaming; the entry has its own swoop
+        bank += (clamp(-vx / 600, -0.15, 0.15) - bank) * 0.08;
+        const entryBank = (1 - a) * (arriving ? -0.4 : 0.6);
+        df.root.rotation.set(
+          -0.25 + Math.sin(t * 0.8) * 0.05 + pointer.y * 0.08,
+          pointer.x * 0.2 + Math.sin(t * 0.6) * 0.1 + clamp(vx / 900, -0.1, 0.1),
+          entryBank + bank,
+        );
         df.opacity = clamp(1 - scroll / (h * 0.85)) * clamp((now - shownAt) / (handoff ? 550 : 300) + (reduce ? 1 : 0));
         df.glow = arriving && !reduce ? 1.4 * (1 - clamp((now - start) / 2200)) : 0;
-        if (!reduce) df.beat(dt, 3.4 + (1 - a) * 2.2, 0.32 + (1 - a) * 0.12);
+        const effort = Math.max(1 - a, flying);
+        if (!reduce) df.beat(dt, 3.4 + effort * 2.2, 0.32 + effort * 0.12);
         else df.beat(0, 0, 0);
 
         // shed light from the wings while flying, then only now and then
-        if (!reduce && Math.random() < (a < 1 ? 0.9 : handoff ? 0.08 : 0.15)) emit(x - w / 2, h / 2 - y, s * 1.4);
+        const shed = a < 1 ? 0.9 : flying > 0.05 ? 0.3 + 0.4 * flying : handoff ? 0.08 : 0.15;
+        if (!reduce && Math.random() < shed) emit(x - w / 2, h / 2 - y, s * 1.4);
         for (let i = 0; i < N; i++) {
           if (life[i] <= 0) {
             alpha[i] = 0;

@@ -8,7 +8,10 @@ export default function Nav() {
   const [active, setActive] = useState('');
 
   useEffect(() => {
-    const onScroll = () => setSolid(window.scrollY > window.innerHeight * 0.6);
+    const onScroll = () => {
+      const hero = document.getElementById('home');
+      setSolid(window.scrollY > (hero?.offsetHeight ?? window.innerHeight) * 0.6);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     const io = new IntersectionObserver(
