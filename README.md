@@ -22,7 +22,7 @@ npm run build    # static files in dist/ (relative paths, host anywhere)
 Handy links while presenting:
 
 - `/?skip` opens straight on the homepage.
-- `/?intro=canvas` always plays the intro (after a visit it is skipped for 7 days).
+- The link always opens on the welcome screen. Within the same tab it plays once, so a refresh mid-visit goes straight to the homepage; `/?intro=canvas` forces it again.
 - `/?intro=still` shows the still welcome that reduced-motion visitors get.
 - `/?intro=film` plays the Blender film instead, once its video is in `public/intro/`.
 - Press **Escape** during the intro to jump to the invitation.

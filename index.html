@@ -16,8 +16,7 @@
           var q = new URLSearchParams(location.search), intro = q.get('intro');
           if (q.has('skip') || location.hash.length > 1 || intro === 'film' || intro === 'still') return;
           if (intro !== 'canvas') {
-            var seen = Number(localStorage.getItem('qdl-intro-seen'));
-            if (seen > 0 && Date.now() - seen < 7 * 864e5) return;
+            if (sessionStorage.getItem('qdl-intro-seen') === '1') return;
             if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
           }
           var n = navigator, c = n.connection;

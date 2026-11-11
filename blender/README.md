@@ -123,7 +123,7 @@ welcome each visitor gets:
 | Visitor | Welcome |
 | --- | --- |
 | First visit | The live 3D melting dragonfly. With `?intro=film`, the film: MP4 (H.264) first, WebM (VP9) as a fallback, and a 540p cut for phones and data-saver connections. |
-| Saw it in the last 7 days | Straight to the homepage. The footer has "Watch the dragonfly again". |
+| Already saw it in this tab | Straight to the homepage. A fresh visit (new tab, a link from an email) always opens on the welcome screen. The footer has "Watch the dragonfly again". |
 | Prefers reduced motion | The still, illustrated welcome. |
 | Low memory, data saver or no WebGL | The hand-drawn canvas dragonfly. |
 | Film missing, blocked or slow to start (4.5 s) | Falls back to the melting dragonfly. |
